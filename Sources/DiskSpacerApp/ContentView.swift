@@ -1,8 +1,74 @@
 import SwiftUI
 import DiskSpacerCore
 
+enum AppTab: String, CaseIterable, Identifiable {
+    case clean = "Clean"
+    case explore = "Explore"
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .clean:   return "sparkles"
+        case .explore: return "chart.bar.doc.horizontal"
+        }
+    }
+}
+
 struct ContentView: View {
     @State private var model = AppModel()
+    @State private var explore = ExploreModel()
+    @State private var tab: AppTab = .clean
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TabBar(tab: $tab)
+            Divider()
+
+            switch tab {
+            case .clean:
+                CleanTab(model: model)
+            case .explore:
+                ExploreView(model: explore) { methodID in
+                    // Following a folder to the method that cleans it: switch
+                    // tabs, scan if this is the first visit, and open that
+                    // method's card so the user lands on the right thing.
+                    tab = .clean
+                    model.focus(methodID: methodID)
+                }
+            }
+        }
+        .frame(minWidth: 760, minHeight: 580)
+        .background(.background)
+        .sheet(isPresented: $model.showConfirm) {
+            ConfirmSheet(model: model)
+        }
+    }
+}
+
+struct TabBar: View {
+    @Binding var tab: AppTab
+
+    var body: some View {
+        HStack {
+            Picker("", selection: $tab) {
+                ForEach(AppTab.allCases) { t in
+                    Label(t.rawValue, systemImage: t.icon).tag(t)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 260)
+            Spacer()
+        }
+        .padding(.horizontal, Theme.gutter)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+    }
+}
+
+/// The original single-screen flow, now one of two tabs.
+struct CleanTab: View {
+    @Bindable var model: AppModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,11 +96,6 @@ struct ContentView: View {
                 Divider()
                 ActionBar(model: model)
             }
-        }
-        .frame(minWidth: 720, minHeight: 560)
-        .background(.background)
-        .sheet(isPresented: $model.showConfirm) {
-            ConfirmSheet(model: model)
         }
     }
 }
@@ -253,17 +314,31 @@ struct ReviewView: View {
                 message: "No reclaimable space was detected.",
                 systemImage: "checkmark.circle")
         } else {
-            ScrollView {
-                LazyVStack(spacing: 10) {
-                    ForEach(model.actionableReports) { report in
-                        MethodCard(model: model, report: report)
-                    }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(model.actionableReports) { report in
+                            MethodCard(model: model, report: report)
+                                .id(report.methodID)
+                        }
 
-                    if !model.inactiveReports.isEmpty {
-                        InactiveSection(reports: model.inactiveReports)
+                        if !model.inactiveReports.isEmpty {
+                            InactiveSection(reports: model.inactiveReports)
+                        }
                     }
+                    .padding(Theme.gutter)
                 }
-                .padding(Theme.gutter)
+                // Arriving from Explore: bring the requested method into view.
+                .onChange(of: model.focusedMethod) { _, id in
+                    guard let id else { return }
+                    withAnimation { proxy.scrollTo(id, anchor: .top) }
+                    model.focusedMethod = nil
+                }
+                .onAppear {
+                    guard let id = model.focusedMethod else { return }
+                    proxy.scrollTo(id, anchor: .top)
+                    model.focusedMethod = nil
+                }
             }
         }
     }

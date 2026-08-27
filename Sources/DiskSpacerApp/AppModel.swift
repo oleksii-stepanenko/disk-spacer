@@ -171,6 +171,22 @@ final class AppModel {
     func toggleExpanded(_ id: String) {
         if expanded.contains(id) { expanded.remove(id) } else { expanded.insert(id) }
     }
+
+    /// Opens a specific method, arriving from the Explore tab.
+    ///
+    /// If nothing has been scanned yet the scan is started first and the method
+    /// is opened once results land, so the jump works whichever tab the user
+    /// happened to start in.
+    func focus(methodID: String) {
+        expanded.insert(methodID)
+        focusedMethod = methodID
+        if results == nil && phase != .scanning {
+            scan()
+        }
+    }
+
+    /// Method the view should scroll to once results are on screen.
+    var focusedMethod: String?
 }
 
 enum SelectionState { case none, some, all }

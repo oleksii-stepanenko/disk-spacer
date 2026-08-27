@@ -30,6 +30,34 @@ delete. Some are not. It is hard to tell which is which.
 
 Disk Spacer looks through all of it and gives you a clear list.
 
+The app has two tabs: **Clean** finds space you can safely get back, and
+**Explore** shows you where all your space actually went.
+
+---
+
+## 🔍 Explore — where did my space go?
+
+Pick a disk and scan. Every folder shows the **total size of everything inside
+it**, biggest first. Click to go deeper, and keep following the big numbers
+until you find what is actually taking the room.
+
+- **Sorted by size at every level** — the answer is usually at the top
+- **A bar per row** showing its share of the folder you are looking at
+- **Largest Files** view — the single biggest files on the disk
+- **Known folders are labelled** — when a folder is something the Clean tab
+  can handle, it says so and links straight to it
+- **Any disk** — your home folder, the whole startup disk, or an external drive
+
+Scanning a home folder of 1.4 million files takes about ten seconds.
+
+**This tab never deletes anything.** It only looks. The most it will do is open
+a folder in Finder. Removing things stays in the Clean tab, where every path is
+checked against a short allow-list first.
+
+---
+
+## 🧹 Clean — what can I safely remove?
+
 **For every item it finds, it tells you four things:**
 
 | | |
@@ -181,7 +209,8 @@ swift test
 ```
 
 The tests cover the parts that must not go wrong: the delete allow-list, the
-double-counting rules, and the size measuring.
+double-counting rules, the size measuring, and the tree scanner — where a
+wrong total looks exactly like a right one.
 
 To redraw the icon and banner after changing them:
 
@@ -205,6 +234,8 @@ sips -Z 1600 docs/assets/hero.png
 disk-spacer/
 ├── Sources/
 │   ├── DiskSpacerCore/    the engine — finds, measures, and removes
+│   │   ├── TreeScanner    builds the folder tree for Explore
+│   │   └── SafetyGuard    the allow-list every delete passes through
 │   └── DiskSpacerApp/     the window you see
 ├── Tests/                 tests for the risky parts
 ├── scripts/
