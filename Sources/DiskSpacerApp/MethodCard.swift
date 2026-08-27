@@ -127,17 +127,29 @@ struct MethodCard: View {
     private var itemList: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("WILL BE \(report.action.verb.uppercased())D")
+                Text(report.action == .command
+                     ? "WILL BE RECLAIMED BY \(report.pruneTool?.uppercased() ?? "THE TOOL")"
+                     : "WILL BE \(report.action.verb.uppercased())D")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.tertiary)
                     .tracking(0.5)
                 Spacer()
-                Button(state == .all ? "Deselect all" : "Select all") {
-                    model.toggleAll(report)
+                if report.supportsPartialSelection {
+                    Button(state == .all ? "Deselect all" : "Select all") {
+                        model.toggleAll(report)
+                    }
+                    .font(.caption)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentColor)
                 }
-                .font(.caption)
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.accentColor)
+            }
+
+            if !report.supportsPartialSelection {
+                Text("This method runs a single command, so it's all or nothing — "
+                   + "individual entries can't be kept.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 2)
             }
 
             // Long lists scroll inside the card so one huge method can't push
@@ -147,6 +159,7 @@ struct MethodCard: View {
                     item: item,
                     isSelected: model.isSelected(report, item),
                     isPath: item.isFilesystemPath,
+                    selectable: report.supportsPartialSelection,
                     toggle: { model.toggle(report, item) })
             }
 
@@ -190,14 +203,24 @@ struct ItemRow: View {
     let item: CleanupItem
     let isSelected: Bool
     let isPath: Bool
+    /// False for command-reclaimed methods, where a per-item checkbox would
+    /// imply control the clean doesn't actually honour.
+    var selectable: Bool = true
     let toggle: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            Toggle("", isOn: Binding(get: { isSelected }, set: { _ in toggle() }))
-                .labelsHidden()
-                .toggleStyle(.checkbox)
-                .controlSize(.small)
+            if selectable {
+                Toggle("", isOn: Binding(get: { isSelected }, set: { _ in toggle() }))
+                    .labelsHidden()
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+            } else {
+                Image(systemName: "circle.fill")
+                    .font(.system(size: 4))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 14)
+            }
 
             Text(item.displayName)
                 .font(.callout)

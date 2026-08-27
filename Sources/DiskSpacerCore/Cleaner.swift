@@ -146,18 +146,25 @@ public struct SinglePathCleaner: Cleaner {
     /// Skip children smaller than this, so marker files like `CACHEDIR.TAG`
     /// don't clutter the list.
     let minimumSize: Int64
+    /// For `.command` methods: the tool that reclaims the space. Needed where
+    /// the tree can't simply be deleted — the Go module cache, for instance,
+    /// is written read-only and must be cleared by `go clean -modcache`.
+    let pruneTool: String?
+    let pruneArgs: [String]
 
     public init(
         id: String, title: String, category: MethodCategory, safety: Safety,
         action: RemovalAction = .delete, whatItIs: String, whatRegenerates: String,
         manualCommand: String, path: String, emptyContents: Bool = true,
-        minimumSize: Int64 = 1_000_000, priority: Int = 0
+        minimumSize: Int64 = 1_000_000, priority: Int = 0,
+        pruneTool: String? = nil, pruneArgs: [String] = []
     ) {
         self.id = id; self.title = title; self.category = category
         self.safety = safety; self.action = action; self.whatItIs = whatItIs
         self.whatRegenerates = whatRegenerates; self.manualCommand = manualCommand
         self.path = path; self.emptyContents = emptyContents
         self.minimumSize = minimumSize; self.priority = priority
+        self.pruneTool = pruneTool; self.pruneArgs = pruneArgs
     }
 
     public func scan() async -> MethodReport {
@@ -185,7 +192,8 @@ public struct SinglePathCleaner: Cleaner {
                     path: child.path, size: m.bytes, note: DiskSizer.ageNote(child)))
             }
             let status: ScanStatus = items.isEmpty ? (denied ? .needsFullDiskAccess : .empty) : .ok
-            return report(items: items, status: status, upperBound: hardLinks)
+            return report(items: items, status: status, upperBound: hardLinks,
+                          pruneTool: pruneTool, pruneArgs: pruneArgs)
         }
 
         guard SafetyGuard.isRemovable(url.path) else {
@@ -198,6 +206,7 @@ public struct SinglePathCleaner: Cleaner {
         }
         return report(
             items: [CleanupItem(path: url.path, size: m.bytes, note: DiskSizer.ageNote(url))],
-            status: .ok, upperBound: m.sawHardLinks)
+            status: .ok, upperBound: m.sawHardLinks,
+            pruneTool: pruneTool, pruneArgs: pruneArgs)
     }
 }

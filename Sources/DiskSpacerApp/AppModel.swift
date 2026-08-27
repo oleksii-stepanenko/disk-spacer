@@ -81,6 +81,12 @@ final class AppModel {
     }
 
     func toggle(_ report: MethodReport, _ item: CleanupItem) {
+        // A command-reclaimed method removes whatever its tool decides, so
+        // deselecting one row would be a lie. Fall back to all-or-nothing.
+        guard report.supportsPartialSelection else {
+            toggleAll(report)
+            return
+        }
         var picked = selection[report.methodID] ?? []
         if picked.contains(item.path) { picked.remove(item.path) }
         else { picked.insert(item.path) }

@@ -101,17 +101,22 @@ public enum Catalog {
             path: "\(home)/.cargo/registry",
             priority: 10))
 
+        // Go writes its module cache read-only (most directories are dr-xr-xr-x),
+        // so a plain removeItem fails partway through. `go clean -modcache` is
+        // the only reliable way to clear it.
         cleaners.append(SinglePathCleaner(
             id: "go.modcache",
             title: "Go Module Cache",
             category: .caches,
             safety: .regenerable,
-            whatItIs: "Downloaded Go modules. Often several GB and read-only, "
-                    + "which is why plain rm fails on it.",
+            action: .command,
+            whatItIs: "Downloaded Go modules. Often several GB, and written "
+                    + "read-only, which is why plain rm fails on it.",
             whatRegenerates: "Re-downloaded by the next go build.",
             manualCommand: "go clean -modcache",
             path: "\(home)/go/pkg/mod",
-            priority: 10))
+            priority: 10,
+            pruneTool: "go", pruneArgs: ["clean", "-modcache"]))
 
         // ── Generic user caches (lowest priority; the above win on overlap) ──
         cleaners.append(DirectoryChildrenCleaner(
@@ -218,10 +223,17 @@ struct DockerCleaner: Cleaner {
     let whatItIs = "Stopped containers, dangling images and the BuildKit build "
                  + "cache. The build cache alone is routinely tens of GB."
     let whatRegenerates = "Images are re-pulled and layers rebuilt on demand — "
-                        + "slower the first time. Tagged images still in use and "
-                        + "named volumes are left alone."
-    let manualCommand = "docker container prune -f && docker image prune -f && docker builder prune -f"
+                        + "slower the first time. Tagged images and named volumes "
+                        + "are left alone."
+    // Must match pruneArgs exactly, so the command shown is the command run.
+    let manualCommand = "docker system prune -f"
     let priority = 20
+
+    /// `docker system df` reports reclaimable space for categories that
+    /// `system prune -f` will not touch. Volumes are the important one: prune
+    /// without `--volumes` never removes them, so listing them would promise
+    /// space the clean can't deliver.
+    private static let prunedTypes: Set<String> = ["Containers", "Build Cache", "Images"]
 
     func scan() async -> MethodReport {
         guard Shell.which("docker") != nil else {
@@ -240,6 +252,7 @@ struct DockerCleaner: Cleaner {
                   let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let type = o["Type"] as? String,
                   let reclaimable = o["Reclaimable"] as? String else { continue }
+            guard Self.prunedTypes.contains(type) else { continue }
             let bytes = parseDockerSize(reclaimable)
             guard bytes > 0 else { continue }
             items.append(CleanupItem(
@@ -248,7 +261,10 @@ struct DockerCleaner: Cleaner {
                 label: type))
         }
 
+        // The Images figure includes tagged-but-unused images, which prune -f
+        // leaves in place, so the total is an upper bound rather than a promise.
         return report(items: items, status: items.isEmpty ? .empty : .ok,
+                      upperBound: true,
                       pruneTool: "docker",
                       pruneArgs: ["system", "prune", "-f"])
     }
@@ -279,7 +295,10 @@ struct HomebrewCleaner: Cleaner {
                  + "installing, plus superseded versions of installed formulae."
     let whatRegenerates = "Re-downloaded if you reinstall or downgrade a package. "
                         + "Nothing currently installed stops working."
-    let manualCommand = "brew cleanup --prune=all"
+    // Scan and execute must use identical flags: --prune=all would discard
+    // more than `brew cleanup --dry-run` listed, removing what the confirm
+    // sheet never showed.
+    let manualCommand = "brew cleanup"
     let priority = 20
 
     func scan() async -> MethodReport {
@@ -308,7 +327,7 @@ struct HomebrewCleaner: Cleaner {
         }
 
         return report(items: items, status: items.isEmpty ? .empty : .ok,
-                      pruneTool: "brew", pruneArgs: ["cleanup", "--prune=all"])
+                      pruneTool: "brew", pruneArgs: ["cleanup"])
     }
 
     /// Parses the trailing "(1,067 files, 9.8MB)" or "(13.8KB)" fragment.

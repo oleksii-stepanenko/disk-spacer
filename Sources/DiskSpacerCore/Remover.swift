@@ -95,6 +95,11 @@ public enum Remover {
             return RemovalResult(path: report.methodID, freed: 0, succeeded: false,
                                  error: "no prune command defined")
         }
+        // Measure the volume before and after: a prune reclaims whatever the
+        // tool decides to reclaim, which is rarely exactly what the scan
+        // estimated. Reporting the scan figure here would overstate the result.
+        let before = DiskSizer.availableCapacity()
+
         guard let out = Shell.run(tool, report.pruneArgs, timeout: 300) else {
             return RemovalResult(path: report.methodID, freed: 0, succeeded: false,
                                  error: "\(tool) not found")
@@ -105,7 +110,15 @@ public enum Remover {
                 path: report.methodID, freed: 0, succeeded: false,
                 error: msg.split(separator: "\n").last.map(String.init) ?? "exit \(out.exitCode)")
         }
-        return RemovalResult(path: report.methodID, freed: report.totalSize, succeeded: true)
+
+        let after = DiskSizer.availableCapacity()
+        let delta: Int64
+        if let a = after, let b = before {
+            delta = max(0, a - b)
+        } else {
+            delta = 0
+        }
+        return RemovalResult(path: report.methodID, freed: delta, succeeded: true)
     }
 }
 

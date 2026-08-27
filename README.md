@@ -73,11 +73,26 @@ protected paths stop appearing, remove and re-add the entry.
 
 ## Safety design
 
-- **Every deletion passes one choke point.** `SafetyGuard.validate` refuses any
-  path that isn't a strict descendant of an explicit allowlist, rejects `$HOME`
-  and its top-level folders outright, and resolves symlinks in the parent chain
-  so a symlinked ancestor can't be used to escape. It fails closed, and it is
-  re-checked immediately before removal, not merely at scan time.
+- **Every path deletion passes one choke point.** `SafetyGuard.validate`
+  refuses any path that isn't a strict descendant of an explicit allowlist,
+  rejects `$HOME` and its top-level folders outright, and resolves symlinks in
+  the parent chain so a symlinked ancestor can't be used to escape. It fails
+  closed, and it is re-checked immediately before removal, not merely at scan
+  time. (Command-reclaimed methods — Docker, Homebrew, `go clean -modcache`,
+  `simctl` — don't delete paths at all, so they bypass the guard by design;
+  their arguments are hardcoded and never built from scanned paths.)
+- **What you tick is what gets removed.** Methods that reclaim space by running
+  a tool can't honour a partial selection — the tool decides what goes — so the
+  app makes them all-or-nothing rather than showing per-item checkboxes it
+  would then ignore. Where a tool's own scope is wider than the list shown, the
+  figure is marked as an upper bound.
+- **Scan and execute use the same command.** `brew cleanup --dry-run` is what's
+  shown, `brew cleanup` is what runs. Docker reports only the categories
+  `docker system prune -f` actually reclaims — volumes are excluded, because
+  prune without `--volumes` never touches them.
+- **The result screen reports measured bytes.** For command methods the freed
+  figure comes from the volume's free space before and after, not from the
+  scan's estimate.
 - **No admin, ever.** Anything needing `sudo` is shown as a manual command
   only. The app never asks for your password and never runs a privileged helper.
 - **Sizes are what you actually get back.** Allocated size, not logical size.

@@ -130,6 +130,12 @@ public struct MethodReport: Sendable, Codable, Identifiable {
 
     public var totalSize: Int64 { items.reduce(0) { $0 + $1.size } }
     public var isActionable: Bool { status == .ok && !items.isEmpty }
+
+    /// Command-reclaimed methods run a single tool that decides for itself what
+    /// to remove, so individual items can't be opted out of. Selection is
+    /// all-or-nothing, and the UI must not offer per-item checkboxes that the
+    /// clean would then ignore.
+    public var supportsPartialSelection: Bool { action != .command }
 }
 
 /// Outcome of one removal attempt, so the UI can report honestly rather than

@@ -205,3 +205,92 @@ final class ParsingTests: XCTestCase {
         XCTAssertNotEqual(formatBytes(5_000_000_000), formatBytes(5_000_000))
     }
 }
+
+/// Exercises the actual removal path end to end. Everything else tests the
+/// guard in isolation; this drives validate → removeItem → summary against a
+/// real directory, inside an allowlisted root so the guard permits it.
+final class RemoverTests: XCTestCase {
+
+    private let sandbox = URL(fileURLWithPath: NSHomeDirectory())
+        .appendingPathComponent("Library/Caches/diskspacer-selftest")
+
+    override func setUpWithError() throws {
+        try? FileManager.default.removeItem(at: sandbox)
+        try FileManager.default.createDirectory(
+            at: sandbox, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: sandbox)
+    }
+
+    private func makeVictim(_ name: String, bytes: Int) throws -> CleanupItem {
+        let dir = sandbox.appendingPathComponent(name)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(repeating: 0x5A, count: bytes)
+            .write(to: dir.appendingPathComponent("payload.bin"))
+        let size = DiskSizer.measure(dir).bytes
+        return CleanupItem(path: dir.path, size: size)
+    }
+
+    private func report(_ items: [CleanupItem],
+                        action: RemovalAction = .delete) -> MethodReport {
+        MethodReport(
+            methodID: "selftest", title: "Self Test", category: .caches,
+            safety: .regenerable, action: action, whatItIs: "", whatRegenerates: "",
+            manualCommand: "", items: items, status: .ok)
+    }
+
+    func testDeletesSelectedAndReportsFreedBytes() async throws {
+        let a = try makeVictim("alpha", bytes: 120_000)
+        let b = try makeVictim("beta",  bytes: 80_000)
+        let r = report([a, b])
+
+        let summary = await Remover.clean(
+            reports: [r], selection: ["selftest": Set([a.path, b.path])])
+
+        XCTAssertEqual(summary.succeededCount, 2)
+        XCTAssertTrue(summary.failures.isEmpty, "\(summary.failures)")
+        XCTAssertEqual(summary.freedBytes, a.size + b.size)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: a.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: b.path))
+    }
+
+    func testUnselectedItemsSurvive() async throws {
+        let keep = try makeVictim("keep",   bytes: 60_000)
+        let go   = try makeVictim("remove", bytes: 60_000)
+        let r = report([keep, go])
+
+        let summary = await Remover.clean(
+            reports: [r], selection: ["selftest": Set([go.path])])
+
+        XCTAssertEqual(summary.succeededCount, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: keep.path),
+                      "an unselected item was removed")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: go.path))
+    }
+
+    func testEmptySelectionRemovesNothing() async throws {
+        let a = try makeVictim("untouched", bytes: 50_000)
+        let summary = await Remover.clean(reports: [report([a])], selection: [:])
+
+        XCTAssertEqual(summary.results.count, 0)
+        XCTAssertEqual(summary.freedBytes, 0)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: a.path))
+    }
+
+    /// The guard must still refuse a path smuggled in via a crafted report,
+    /// because selections pass through the UI between scan and clean.
+    func testRefusesPathOutsideAllowlistEvenIfReportClaimsIt() async throws {
+        let outside = URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Documents/diskspacer-must-not-touch")
+        let item = CleanupItem(path: outside.path, size: 999)
+
+        let summary = await Remover.clean(
+            reports: [report([item])], selection: ["selftest": Set([item.path])])
+
+        XCTAssertEqual(summary.succeededCount, 0)
+        XCTAssertEqual(summary.failures.count, 1)
+        XCTAssertEqual(summary.freedBytes, 0)
+    }
+}
