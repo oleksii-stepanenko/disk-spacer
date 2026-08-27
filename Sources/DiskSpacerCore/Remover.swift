@@ -131,14 +131,24 @@ public enum Permissions {
     /// by hand in System Settings — so the app detects it and guides the user
     /// there rather than prompting.
     public static var hasFullDiskAccess: Bool {
-        let probes = [
+        let fm = FileManager.default
+
+        // A probe only tells us anything if the path actually exists. Treating
+        // "missing" as "blocked" would show the warning banner to someone who
+        // has granted access but, say, never launched Safari.
+        let dirProbes = [
+            NSHomeDirectory() + "/Library/Application Support/com.apple.sharedfilelist",
             NSHomeDirectory() + "/Library/Safari",
-            "/Library/Application Support/com.apple.TCC/TCC.db",
+            NSHomeDirectory() + "/Library/Mail",
         ]
-        for p in probes {
-            if FileManager.default.isReadableFile(atPath: p) { return true }
-            if (try? FileManager.default.contentsOfDirectory(atPath: p)) != nil { return true }
+        for p in dirProbes where fm.fileExists(atPath: p) {
+            if (try? fm.contentsOfDirectory(atPath: p)) != nil { return true }
         }
+
+        // The canonical probe, present on every macOS install.
+        let tcc = "/Library/Application Support/com.apple.TCC/TCC.db"
+        if fm.fileExists(atPath: tcc), fm.isReadableFile(atPath: tcc) { return true }
+
         return false
     }
 

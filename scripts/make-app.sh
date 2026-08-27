@@ -5,7 +5,7 @@
 # to a bundle identity, so the app has to be a proper .app with a stable bundle
 # id for the grant to stick across launches.
 #
-# Usage: ./Scripts/make-app.sh [--release] [--install]
+# Usage: ./scripts/make-app.sh [--release] [--install]
 #   --release   build with optimizations (default: debug)
 #   --install   also copy the result into /Applications
 
@@ -25,13 +25,15 @@ for arg in "$@"; do
 done
 
 APP_NAME="Disk Spacer"
-BUNDLE_ID="com.oleksii.diskspacer"
+BUNDLE_ID="io.stepanenko.DiskSpacer"
+# CI overrides these from the git tag; local builds get a placeholder.
+VERSION="${DISKSPACER_VERSION:-1.0.0}"
+BUILD="${DISKSPACER_BUILD:-1}"
 APP="$ROOT/build/$APP_NAME.app"
 
 echo "Building ($CONFIG)…"
 cd "$ROOT"
 swift build -c "$CONFIG" --product DiskSpacerApp
-swift build -c "$CONFIG" --product diskspacer
 
 BIN="$(swift build -c "$CONFIG" --show-bin-path)"
 
@@ -40,6 +42,15 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BIN/DiskSpacerApp" "$APP/Contents/MacOS/$APP_NAME"
+
+# The icon is committed rather than rendered here: an SPM app has no asset
+# catalog, so the icon is a plain .icns in Resources referenced by
+# CFBundleIconFile. Regenerate it with scripts/make-icon.swift if it changes.
+if [[ -f "$ROOT/Resources/AppIcon.icns" ]]; then
+  cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+else
+  echo "warning: Resources/AppIcon.icns missing — the app will use the generic icon"
+fi
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -50,9 +61,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleDisplayName</key>         <string>$APP_NAME</string>
     <key>CFBundleIdentifier</key>          <string>$BUNDLE_ID</string>
     <key>CFBundleExecutable</key>          <string>$APP_NAME</string>
+    <key>CFBundleIconFile</key>            <string>AppIcon</string>
     <key>CFBundlePackageType</key>         <string>APPL</string>
-    <key>CFBundleShortVersionString</key>  <string>1.0</string>
-    <key>CFBundleVersion</key>             <string>1</string>
+    <key>CFBundleShortVersionString</key>  <string>$VERSION</string>
+    <key>CFBundleVersion</key>             <string>$BUILD</string>
     <key>LSMinimumSystemVersion</key>      <string>14.0</string>
     <key>NSHighResolutionCapable</key>     <true/>
     <key>LSApplicationCategoryType</key>   <string>public.app-category.utilities</string>
@@ -79,4 +91,3 @@ fi
 
 echo
 echo "Run it with:   open '$APP'"
-echo "CLI built at:  $BIN/diskspacer"

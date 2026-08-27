@@ -1,157 +1,229 @@
+<div align="center">
+
+<img src="docs/assets/logo.png" width="120" alt="Disk Spacer logo" />
+
 # Disk Spacer
 
-A native macOS app for reclaiming disk space — plus the CLI and shell scripts
-behind it.
+**See what is using your disk. Clean it safely.**
 
-The rule the whole thing is built around: **analyse first, explain, then let
-you decide.** Every method tells you what it found, how much it will free,
-exactly which files go, what regenerates afterwards, and the Terminal command
-to do the same thing by hand. Nothing is removed until you confirm.
+A small, native macOS app that finds space you can get back — and shows you
+exactly what it will delete **before** it deletes anything.
 
-## What it looks for
+[![Download](https://img.shields.io/badge/Download-.dmg-5B6BF5?style=for-the-badge&logo=apple&logoColor=white)](../../releases/latest)
+&nbsp;
+[![Website](https://img.shields.io/badge/Website-disk--spacer-5B6BF5?style=for-the-badge&logo=githubpages&logoColor=white)](https://oleksii-stepanenko.github.io/disk-spacer/)
+&nbsp;
+![Platform](https://img.shields.io/badge/macOS-14%2B-111?style=for-the-badge&logo=apple)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-| Method | What it is | Safety |
+<img src="docs/assets/hero.png" width="760" alt="Disk Spacer" />
+
+</div>
+
+---
+
+## 🧹 What it does
+
+Your Mac fills up with files you never asked for: old build folders, caches,
+downloaded packages, dead simulators, Docker layers. Most of them are safe to
+delete. Some are not. It is hard to tell which is which.
+
+Disk Spacer looks through all of it and gives you a clear list.
+
+**For every item it finds, it tells you four things:**
+
+| | |
+|---|---|
+| 💾 **How much space** | The real size you get back |
+| 📋 **Exactly what** | Every single file and folder, by name |
+| ♻️ **What happens next** | Does it come back on its own? Is it gone forever? |
+| ⌨️ **How to do it yourself** | The Terminal command, ready to copy |
+
+Then you choose. Tick what you want, untick what you don't, and press one
+button. **Nothing is removed until you say so.**
+
+<!-- SCREENSHOTS: capture with ⌘⇧4 then Space, click the window, and save as:
+       docs/assets/screenshot-review.png   — the results list, one card expanded
+       docs/assets/screenshot-confirm.png  — the confirmation sheet
+       docs/assets/screenshot-result.png   — the "Reclaimed X" screen
+     Then delete this comment and uncomment the images below.
+
+<div align="center">
+<img src="docs/assets/screenshot-review.png" width="760" alt="Reviewing what will be removed" />
+<br /><br />
+<img src="docs/assets/screenshot-confirm.png" width="620" alt="The confirmation step" />
+</div>
+-->
+
+---
+
+## 🚀 Install
+
+### With Homebrew (easiest)
+
+```sh
+brew install --cask oleksii-stepanenko/tap/disk-spacer
+```
+
+### Or download it
+
+**[Download the latest `.dmg`](../../releases/latest)**, open it, and drag
+**Disk Spacer** into your **Applications** folder.
+
+---
+
+## 🔓 First launch
+
+Disk Spacer is **not notarized** by Apple (that needs a paid Apple Developer
+account), so macOS blocks it the first time. This is normal. To open it:
+
+1. Double-click **Disk Spacer**. macOS will refuse.
+2. Open **System Settings → Privacy & Security**.
+3. Scroll down to **Security** and click **Open Anyway**.
+4. Confirm with Touch ID or your password.
+
+You only need to do this once per update.
+
+---
+
+## 🔑 Full Disk Access (recommended)
+
+Some folders on macOS are private. Apps cannot look inside them unless you
+allow it. Your Trash and other apps' data are two examples.
+
+Without permission, Disk Spacer **cannot see those folders**. It will say so
+clearly — it will never pretend a folder is empty when it simply could not
+look inside.
+
+To give permission:
+
+**System Settings → Privacy & Security → Full Disk Access →** turn on
+**Disk Spacer**.
+
+The app shows a banner with a button that takes you straight there.
+
+> **Note:** because the app is signed with a self-signed certificate, this
+> permission may reset after an update. If protected folders stop appearing,
+> remove Disk Spacer from the list and add it again.
+
+---
+
+## 📦 What it cleans
+
+| What | What it is | Safe to delete? |
 |---|---|---|
-| Xcode Derived Data | Build intermediates and indexes | Safe |
-| iOS Device Support | Debug symbols per iOS version | Review |
-| Simulator Caches | CoreSimulator runtime caches | Safe |
-| Unavailable Simulators | Devices whose runtime is gone | Safe |
-| npm Cache | `~/.npm` package tarballs | Safe |
-| `~/.cache` | pip, uv, Puppeteer, Hugging Face | Safe |
-| Gradle / Cargo / Go caches | Downloaded dependencies | Safe |
-| Application Caches | `~/Library/Caches` per-app | Safe |
-| Application Logs | `~/Library/Logs` | Safe |
-| Docker Reclaimable | Stopped containers, dangling images, build cache | Safe |
-| Homebrew Cleanup | Old bottles and cask downloads | Safe |
-| Trash | `~/.Trash` | **Permanent** |
-| Old Installers | `.dmg`/`.pkg`/`.iso` in Downloads over 30d old | Review |
+| **Xcode Derived Data** | Build files Xcode makes while compiling | ✅ Yes — Xcode rebuilds them |
+| **iOS Device Support** | Debug files, one per iOS version | ⚠️ Check first — re-copying takes minutes |
+| **Simulator Caches** | Cached simulator data | ✅ Yes |
+| **Dead Simulators** | Simulators you can no longer start | ✅ Yes — they are already broken |
+| **npm Cache** | Downloaded npm packages | ✅ Yes — npm downloads again |
+| **`~/.cache`** | Used by pip, Puppeteer, Hugging Face and others | ✅ Yes |
+| **Gradle / Cargo / Go** | Downloaded code libraries | ✅ Yes |
+| **App Caches** | Caches from every app you use | ✅ Yes — apps rebuild them |
+| **App Logs** | Log files apps write | ✅ Yes |
+| **Docker** | Stopped containers, unused images, build cache | ✅ Yes |
+| **Homebrew** | Old downloads and old versions | ✅ Yes |
+| **Trash** | Files waiting in your Trash | ❌ **Gone forever** |
+| **Old Installers** | `.dmg` and `.pkg` files over 30 days old | ⚠️ Check first — moved to Trash |
 
-Only **Safe** methods are preselected. Review-first and permanent ones start
-unticked — you opt in deliberately.
+Only the **✅ safe** ones are ticked for you. Anything risky starts unticked,
+so you have to choose it on purpose.
 
-## Build and run
+---
 
-```bash
-./Scripts/make-app.sh --release            # build Disk Spacer.app into ./build
-./Scripts/make-app.sh --release --install  # …and copy it to /Applications
+## 🛡 How it keeps you safe
+
+**It only deletes from a short, fixed list of folders.**
+Every delete is checked against an allow-list first. Your Documents, Desktop,
+Photos and Home folder are blocked outright. If a path is not on the list,
+the app refuses. The check runs again right before deleting, not just when
+scanning.
+
+**It never asks for your password.**
+Anything that would need admin rights is shown to you as a command to run
+yourself. The app does not run anything as administrator, ever.
+
+**The sizes are real.**
+It measures the space you actually get back, not the size shown in Finder. It
+does not follow shortcuts, and it counts shared files only once — so a number
+is never inflated to look impressive. Where a figure can only be a maximum,
+the app says so.
+
+**No number is counted twice.**
+When two cleaners find the same folder, only one of them keeps it. The total
+you see is honest, not flattering.
+
+**Delete or Trash is chosen on purpose.**
+Caches are deleted for real, because moving them to the Trash would not free
+any space. Your personal files, like old installers, go to the Trash instead,
+so you can get them back.
+
+---
+
+## 🔨 Build it yourself
+
+You need Xcode 16 or newer.
+
+```sh
+git clone https://github.com/oleksii-stepanenko/disk-spacer.git
+cd disk-spacer
+
+./scripts/make-app.sh --release            # builds build/Disk Spacer.app
+./scripts/make-app.sh --release --install  # …and copies it to /Applications
+
 open "build/Disk Spacer.app"
 ```
 
-Requires Xcode / Swift 6 toolchain. No dependencies.
+Run the tests:
 
-## CLI
-
-The same engine, driven from the terminal:
-
-```bash
-swift build -c release
-./.build/release/diskspacer scan            # analyse and report
-./.build/release/diskspacer scan --json     # machine-readable
-./.build/release/diskspacer scan --all      # include methods that found nothing
-./.build/release/diskspacer methods         # list method ids
-
-./.build/release/diskspacer clean --method xcode.deriveddata          # dry run
-./.build/release/diskspacer clean --method xcode.deriveddata --yes    # do it
-```
-
-`clean` is a dry run unless you pass `--yes`.
-
-## Full Disk Access
-
-Some locations (`~/.Trash`, other apps' containers, Mail, Safari) are readable
-only with Full Disk Access. macOS provides **no API to request it** — it can
-only be granted by hand.
-
-The app detects the situation and shows a banner with a button to the right
-settings pane. A path it cannot read is always reported as *"needs Full Disk
-Access"*, never as `0 B` — a cleaner that silently reports nothing where it
-simply could not look is worse than one that admits the gap.
-
-Grant it under *System Settings → Privacy & Security → Full Disk Access*.
-Because the app is ad-hoc signed, a rebuild can invalidate the grant; if
-protected paths stop appearing, remove and re-add the entry.
-
-## Safety design
-
-- **Every path deletion passes one choke point.** `SafetyGuard.validate`
-  refuses any path that isn't a strict descendant of an explicit allowlist,
-  rejects `$HOME` and its top-level folders outright, and resolves symlinks in
-  the parent chain so a symlinked ancestor can't be used to escape. It fails
-  closed, and it is re-checked immediately before removal, not merely at scan
-  time. (Command-reclaimed methods — Docker, Homebrew, `go clean -modcache`,
-  `simctl` — don't delete paths at all, so they bypass the guard by design;
-  their arguments are hardcoded and never built from scanned paths.)
-- **What you tick is what gets removed.** Methods that reclaim space by running
-  a tool can't honour a partial selection — the tool decides what goes — so the
-  app makes them all-or-nothing rather than showing per-item checkboxes it
-  would then ignore. Where a tool's own scope is wider than the list shown, the
-  figure is marked as an upper bound.
-- **Scan and execute use the same command.** `brew cleanup --dry-run` is what's
-  shown, `brew cleanup` is what runs. Docker reports only the categories
-  `docker system prune -f` actually reclaims — volumes are excluded, because
-  prune without `--volumes` never touches them.
-- **The result screen reports measured bytes.** For command methods the freed
-  figure comes from the volume's free space before and after, not from the
-  scan's estimate.
-- **No admin, ever.** Anything needing `sudo` is shown as a manual command
-  only. The app never asks for your password and never runs a privileged helper.
-- **Sizes are what you actually get back.** Allocated size, not logical size.
-  Symlinks aren't followed. Hard-linked files are counted once, so a pnpm store
-  or Homebrew Cellar isn't wildly overstated. Where a figure is still an upper
-  bound the UI says so.
-- **No double counting.** When two methods claim overlapping paths the more
-  specific one wins and the generic bucket surrenders those bytes, so the
-  headline total is honest rather than flattering.
-- **Delete vs. Trash is deliberate.** Regenerable caches are deleted outright,
-  because moving them to the Trash wouldn't free any space. Personal files
-  (old installers) go to the Trash instead, where you can get them back.
-
-## Layout
-
-```
-Disk_Spacer/
-├── Package.swift
-├── Sources/
-│   ├── DiskSpacerCore/       engine — scanning, sizing, safety, removal
-│   │   ├── Model.swift        types, safety levels, formatting
-│   │   ├── SafetyGuard.swift  the deletion allowlist
-│   │   ├── DiskSizer.swift    allocated-size walking, hard-link dedupe
-│   │   ├── Cleaner.swift      protocol + generic directory cleaners
-│   │   ├── Catalog.swift      the methods themselves
-│   │   ├── ScanEngine.swift   concurrent scan + overlap dedupe
-│   │   ├── Remover.swift      removal + Full Disk Access detection
-│   │   └── Shell.swift        locating and running docker/brew/xcrun
-│   ├── diskspacer-cli/       terminal front end
-│   └── DiskSpacerApp/        SwiftUI interface
-├── Tests/                    guard, dedupe and sizing tests
-├── Scripts/
-│   ├── make-app.sh           builds the .app bundle
-│   └── *.sh                  standalone shell scripts (see below)
-└── docs/cleanup-methods.md   what uses space on macOS and why
-```
-
-## The shell scripts
-
-`scripts/*.sh` predate the app and remain as the dependency-free manual path —
-useful over SSH, in a CI box, or when you'd rather read a command than trust a
-GUI. They're dry-run by default and take `--yes` to act:
-
-```bash
-./scripts/analyze-disk.sh          # coarse usage report
-./scripts/find-large-files.sh      # individual files over a threshold
-./scripts/find-node-modules.sh     # locate and size node_modules dirs
-./scripts/clean-all.sh             # dry run everything
-./scripts/clean-all.sh --yes       # actually clean
-```
-
-They're written for macOS's stock bash 3.2, so no `mapfile`/`readarray`.
-
-## Tests
-
-```bash
+```sh
 swift test
 ```
 
-Covers the safety allowlist (traversal escapes, similarly-named siblings,
-protected locations), the overlap dedupe, and sizing behaviour (hard links
-counted once, symlinks not followed).
+The tests cover the parts that must not go wrong: the delete allow-list, the
+double-counting rules, and the size measuring.
+
+To redraw the icon and banner after changing them:
+
+```sh
+# icon → Resources/AppIcon.icns (used by the app)
+swift scripts/make-icon.swift Resources
+iconutil -c icns Resources/AppIcon.iconset -o Resources/AppIcon.icns
+
+# logo + banner → docs/assets (used by this page and the website)
+mv Resources/logo.png docs/assets/logo.png
+sips -Z 512 docs/assets/logo.png
+swift scripts/make-banner.swift docs/assets
+sips -Z 1600 docs/assets/hero.png
+```
+
+---
+
+## 📁 What is inside
+
+```
+disk-spacer/
+├── Sources/
+│   ├── DiskSpacerCore/    the engine — finds, measures, and removes
+│   └── DiskSpacerApp/     the window you see
+├── Tests/                 tests for the risky parts
+├── scripts/
+│   ├── make-app.sh        builds the .app
+│   ├── make-icon.swift    draws the icon
+│   └── make-banner.swift  draws the banner
+├── Resources/AppIcon.icns the app icon
+├── docs/                  the website
+└── packaging/homebrew/    the Homebrew cask
+```
+
+---
+
+<div align="center">
+
+**[Website](https://oleksii-stepanenko.github.io/disk-spacer/)** ·
+**[Download](../../releases/latest)** ·
+**[Report a problem](../../issues)**
+
+Made for macOS. [MIT licensed](LICENSE).
+
+</div>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disk Spacer — See what is using your disk. Clean it safely.</title>
+  <meta name="description" content="A small, native macOS app that finds disk space you can get back, and shows you exactly what it will delete before it deletes anything." />
+  <link rel="icon" href="assets/logo.png" />
+  <meta property="og:title" content="Disk Spacer for macOS" />
+  <meta property="og:description" content="See what is using your disk. Clean it safely." />
+  <meta property="og:image" content="assets/hero.png" />
+  <style>
+    :root { --brand:#5B6BF5; --brand-d:#4453d8; --bg:#0b0c14; --card:#141626; --muted:#9096b0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+           background: var(--bg); color: #eef0f7; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: var(--brand); text-decoration: none; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+    header.hero { text-align: center; padding: 80px 24px 56px;
+      background: radial-gradient(900px 420px at 50% -10%, rgba(91,107,245,.30), transparent 70%); }
+    .hero img.logo { width: 108px; height: 108px; border-radius: 25px; box-shadow: 0 18px 50px rgba(0,0,0,.55); }
+    .hero h1 { font-size: 56px; font-weight: 800; letter-spacing: -1.2px; margin: 22px 0 10px; }
+    .hero p.tag { font-size: 21px; color: #ccd1e4; }
+    .hero p.sub { font-size: 16px; color: var(--muted); margin-top: 10px; max-width: 620px;
+      margin-left: auto; margin-right: auto; }
+
+    .cta { display: inline-flex; align-items: center; gap: 10px; margin-top: 30px;
+      background: linear-gradient(180deg, var(--brand), var(--brand-d)); color: #fff; font-weight: 700;
+      padding: 15px 30px; border-radius: 14px; font-size: 18px; box-shadow: 0 10px 30px rgba(91,107,245,.40);
+      transition: transform .12s ease; }
+    .cta:hover { transform: translateY(-2px); }
+    .cta-note { display:block; color: var(--muted); font-size: 13px; margin-top: 14px; }
+
+    .brew { margin-top: 22px; }
+    .brew-label { display:block; color: var(--muted); font-size: 13px; margin-bottom: 9px;
+      text-transform: uppercase; letter-spacing: .08em; }
+    .brew-cmd { display:inline-flex; align-items:center; gap:12px; cursor:pointer;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14.5px;
+      background:#10121f; color:#dfe3f2; border:1px solid rgba(91,107,245,.45);
+      padding:13px 18px; border-radius:12px; transition: border-color .12s ease; }
+    .brew-cmd:hover { border-color: var(--brand); }
+    .brew-cmd .dollar { color: var(--brand); font-weight: 700; }
+    .brew-cmd .hint { color: var(--muted); font-size: 12px; border-left:1px solid rgba(255,255,255,.14);
+      padding-left: 12px; }
+
+    section { padding: 56px 0; border-top: 1px solid rgba(255,255,255,.07); }
+    h2.center { text-align: center; font-size: 32px; margin-bottom: 10px; letter-spacing: -.5px; }
+    p.lead { text-align: center; color: var(--muted); max-width: 640px; margin: 0 auto 36px; }
+
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .item { background: var(--card); border: 1px solid rgba(255,255,255,.07);
+      border-radius: 16px; padding: 24px; }
+    .item .ic { font-size: 26px; display:block; margin-bottom: 12px; }
+    .item h3 { font-size: 18px; margin-bottom: 7px; }
+    .item p { color: #b4bad2; font-size: 15px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 15px; }
+    th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase;
+      letter-spacing: .06em; }
+    td.yes { color: #46d17f; white-space: nowrap; }
+    td.warn { color: #f0b132; white-space: nowrap; }
+    td.no { color: #f2685a; white-space: nowrap; }
+    .scroll { overflow-x: auto; }
+
+    .steps { counter-reset: s; max-width: 680px; margin: 0 auto; }
+    .steps li { list-style: none; counter-increment: s; position: relative;
+      padding: 14px 0 14px 52px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .steps li::before { content: counter(s); position: absolute; left: 0; top: 14px;
+      width: 32px; height: 32px; border-radius: 50%; background: rgba(91,107,245,.18);
+      color: var(--brand); font-weight: 700; display: grid; place-items: center; font-size: 15px; }
+    .steps b { display:block; }
+    .steps span { color: var(--muted); font-size: 15px; }
+
+    footer { text-align: center; color: var(--muted); font-size: 14px;
+      padding: 48px 24px 64px; border-top: 1px solid rgba(255,255,255,.07); }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="hero">
+    <img class="logo" src="assets/logo.png" alt="Disk Spacer logo" />
+    <h1>Disk Spacer</h1>
+    <p class="tag">See what is using your disk. Clean it safely.</p>
+    <p class="sub">A small, native macOS app that finds space you can get back —
+       and shows you exactly what it will delete <strong>before</strong> it deletes anything.</p>
+
+    <a class="cta" href="__REPO_URL__/releases/latest">⬇&nbsp; Download for macOS</a>
+
+    <div class="brew">
+      <span class="brew-label">or install with Homebrew</span>
+      <button type="button" class="brew-cmd" onclick="copyBrew(this)"
+              data-cmd="brew install --cask oleksii-stepanenko/tap/disk-spacer">
+        <span class="dollar">$</span>
+        <span class="cmd">brew install --cask oleksii-stepanenko/tap/disk-spacer</span>
+        <span class="hint">Copy</span>
+      </button>
+    </div>
+
+    <span class="cta-note">macOS 14+ · Free · <a href="__REPO_URL__">View on GitHub</a></span>
+  </header>
+
+  <section class="wrap">
+    <h2 class="center">Nothing is deleted by surprise</h2>
+    <p class="lead">Most disk cleaners ask you to trust them. This one shows its work.</p>
+
+    <div class="grid">
+      <div class="item">
+        <span class="ic">💾</span>
+        <h3>How much space</h3>
+        <p>The real amount you get back — measured properly, counting shared files
+           only once, so the number is never inflated to look impressive.</p>
+      </div>
+      <div class="item">
+        <span class="ic">📋</span>
+        <h3>Exactly what</h3>
+        <p>Every file and folder listed by name and size. Tick what you want,
+           untick what you don't. Open any of them in Finder first.</p>
+      </div>
+      <div class="item">
+        <span class="ic">♻️</span>
+        <h3>What happens next</h3>
+        <p>Does it come back on its own? Does it slow down your next build?
+           Is it gone forever? Every item says so in plain words.</p>
+      </div>
+      <div class="item">
+        <span class="ic">⌨️</span>
+        <h3>How to do it yourself</h3>
+        <p>The Terminal command for every method, ready to copy. Use the app,
+           or skip it and run the command — your choice.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREENSHOTS: capture the app with Cmd+Shift+4 then Space, click the window,
+       save as docs/assets/screenshot-review.png and screenshot-confirm.png,
+       then delete these comment markers to switch this section on.
+  <section class="wrap">
+    <h2 class="center">See it before you delete it</h2>
+    <p class="lead">Every method opens up to show the files inside, what they are,
+       and the command to do it yourself.</p>
+    <img src="assets/screenshot-review.png" alt="Reviewing what will be removed"
+         style="width:100%;border-radius:16px;border:1px solid rgba(255,255,255,.08);
+                box-shadow:0 16px 40px rgba(0,0,0,.45)" />
+    <img src="assets/screenshot-confirm.png" alt="The confirmation step"
+         style="width:100%;margin-top:20px;border-radius:16px;
+                border:1px solid rgba(255,255,255,.08);
+                box-shadow:0 16px 40px rgba(0,0,0,.45)" />
+  </section>
+  -->
+
+  <section class="wrap">
+    <h2 class="center">How it works</h2>
+    <p class="lead">Three steps. You stay in control for all of them.</p>
+    <ol class="steps">
+      <li><b>Analyse</b><span>The app looks through developer caches, package managers,
+          Docker, Homebrew and your Trash. It takes a few seconds.</span></li>
+      <li><b>Review</b><span>You get a list, biggest first. Open any method to see
+          every file inside it, what it is, and what happens after it goes.</span></li>
+      <li><b>Confirm — or don't</b><span>One last screen lists everything that is
+          about to be removed. Cancel any time. Nothing happens until you press the button.</span></li>
+    </ol>
+  </section>
+
+  <section class="wrap">
+    <h2 class="center">What it can clean</h2>
+    <p class="lead">Only the safe ones are ticked for you. Anything risky you have to choose on purpose.</p>
+    <div class="scroll">
+      <table>
+        <tr><th>What</th><th>What it is</th><th>Safe?</th></tr>
+        <tr><td>Xcode Derived Data</td><td>Build files Xcode makes while compiling</td><td class="yes">✅ Yes</td></tr>
+        <tr><td>iOS Device Support</td><td>Debug files, one per iOS version</td><td class="warn">⚠️ Check</td></tr>
+        <tr><td>Dead Simulators</td><td>Simulators you can no longer start</td><td class="yes">✅ Yes</td></tr>
+        <tr><td>npm Cache</td><td>Downloaded npm packages</td><td class="yes">✅ Yes</td></tr>
+        <tr><td><code>~/.cache</code></td><td>pip, Puppeteer, Hugging Face and others</td><td class="yes">✅ Yes</td></tr>
+        <tr><td>Gradle · Cargo · Go</td><td>Downloaded code libraries</td><td class="yes">✅ Yes</td></tr>
+        <tr><td>App Caches</td><td>Caches from every app you use</td><td class="yes">✅ Yes</td></tr>
+        <tr><td>Docker</td><td>Stopped containers, unused images, build cache</td><td class="yes">✅ Yes</td></tr>
+        <tr><td>Homebrew</td><td>Old downloads and old versions</td><td class="yes">✅ Yes</td></tr>
+        <tr><td>Trash</td><td>Files waiting in your Trash</td><td class="no">❌ Forever</td></tr>
+        <tr><td>Old Installers</td><td><code>.dmg</code> and <code>.pkg</code> over 30 days old</td><td class="warn">⚠️ Check</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <h2 class="center">Built to be careful</h2>
+    <div class="grid">
+      <div class="item">
+        <span class="ic">🛡</span>
+        <h3>A short list of allowed folders</h3>
+        <p>Every delete is checked against an allow-list. Documents, Desktop, Photos
+           and your Home folder are blocked outright. If a folder is not on the list,
+           the app refuses to touch it.</p>
+      </div>
+      <div class="item">
+        <span class="ic">🔒</span>
+        <h3>It never asks for your password</h3>
+        <p>Anything needing admin rights is shown to you as a command to run yourself.
+           The app never runs anything as administrator.</p>
+      </div>
+      <div class="item">
+        <span class="ic">🎯</span>
+        <h3>Honest numbers</h3>
+        <p>No space is counted twice. Where a figure can only be a maximum, the app
+           says so instead of promising more than it can deliver.</p>
+      </div>
+      <div class="item">
+        <span class="ic">🗑</span>
+        <h3>Delete or Trash, on purpose</h3>
+        <p>Caches are deleted for real — moving them to the Trash would free nothing.
+           Your personal files go to the Trash, so you can get them back.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><a href="__REPO_URL__">GitHub</a> ·
+       <a href="__REPO_URL__/releases/latest">Download</a> ·
+       <a href="__REPO_URL__/issues">Report a problem</a></p>
+    <p style="margin-top:10px">Made for macOS · MIT licensed</p>
+  </footer>
+
+  <script>
+    function copyBrew(btn) {
+      navigator.clipboard.writeText(btn.dataset.cmd).then(function () {
+        var hint = btn.querySelector('.hint');
+        var old = hint.textContent;
+        hint.textContent = 'Copied!';
+        setTimeout(function () { hint.textContent = old; }, 1500);
+      });
+    }
+  </script>
+</body>
+</html>
